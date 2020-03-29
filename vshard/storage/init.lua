@@ -1125,6 +1125,35 @@ local function buckets_discovery()
     return ret
 end
 
+-- Discovery used by routers. It returns limited number of
+-- buckets to avoid stalls when _bucket is huge.
+local function buckets_discovery_internal(opts)
+    local limit = consts.BUCKET_CHUNK_SIZE
+    local buckets = table.new(limit, 0)
+    local active = consts.BUCKET.ACTIVE
+    local pinned = consts.BUCKET.PINNED
+    local next_from
+    -- No way to select by {status, id}, because there are two
+    -- statuses. A router would need to maintain separate iterator
+    -- for each status it wants to get. This may be implemented in
+    -- future. But _bucket space anyway 99% of time contains only
+    -- active and pinned buckets. So there is no big benefit in
+    -- indexes.
+    for _, bucket in box.space._bucket:pairs({opts.from},
+                                             {iterator = box.index.GE}) do
+        local status = bucket.status
+        if status == active or status == pinned then
+            table.insert(buckets, bucket.id)
+        end
+        limit = limit - 1
+        if limit == 0 then
+            next_from = bucket.id + 1
+            break
+        end
+    end
+    return {buckets = buckets, next_from = next_from}
+end
+
 --
 -- The only thing, that must be done to abort a master demote is
 -- a reset of read_only.
@@ -2246,6 +2275,7 @@ service_call_api = setmetatable({
     bucket_recv = bucket_recv,
     rebalancer_apply_routes = rebalancer_apply_routes,
     rebalancer_request_state = rebalancer_request_state,
+    buckets_discovery = buckets_discovery_internal,
     test_api = service_call_test_api,
 }, {__serialize = function(api)
     local res = {}

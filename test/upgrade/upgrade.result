@@ -161,7 +161,8 @@ vshard.storage._call ~= nil
  | ...
 vshard.storage._call('test_api', 1, 2, 3)
  | ---
- | - bucket_recv: true
+ | - buckets_discovery: true
+ |   bucket_recv: true
  |   rebalancer_apply_routes: true
  |   test_api: true
  |   rebalancer_request_state: true
