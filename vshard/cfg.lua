@@ -255,6 +255,10 @@ local cfg_template = {
         type = 'positive number', name = 'Failover ping timeout',
         is_optional = true, default = consts.DEFAULT_FAILOVER_PING_TIMEOUT
     },
+    discovery_enable = {
+        type = 'boolean', name = 'Discovery enable', is_optional = true,
+        default = true,
+    },
 }
 
 --

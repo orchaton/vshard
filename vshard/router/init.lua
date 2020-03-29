@@ -364,6 +364,25 @@ end
 -- Version < 1.10.
 end
 
+-- Discovery disabling may be useful when there are very many
+-- routers and buckets, and a user does not want to pay overhead
+-- of the automatic massive discovery. It may be expensive in big
+-- clusters.
+local function discovery_disable(router)
+    if router.discovery_fiber then
+        pcall(router.discovery_fiber.cancel)
+        router.discovery_fiber = nil
+    end
+end
+
+local function discovery_enable(router)
+    if not router.discovery_fiber then
+        router.discovery_fiber =
+            util.reloadable_fiber_create('vshard.discovery.' .. router.name, M,
+                                         'discovery_f', router)
+    end
+end
+
 --
 -- Immediately wakeup discovery fiber if exists.
 --
@@ -836,9 +855,10 @@ local function router_cfg(router, cfg, is_reload)
         router.failover_fiber = util.reloadable_fiber_create(
             'vshard.failover.' .. router.name, M, 'failover_f', router)
     end
-    if router.discovery_fiber == nil then
-        router.discovery_fiber = util.reloadable_fiber_create(
-            'vshard.discovery.' .. router.name, M, 'discovery_f', router)
+    if vshard_cfg.discovery_enable then
+        discovery_enable(router)
+    else
+        discovery_disable(router)
     end
 end
 
@@ -1198,6 +1218,8 @@ local router_mt = {
         bootstrap = cluster_bootstrap;
         bucket_discovery = bucket_discovery;
         discovery_wakeup = discovery_wakeup;
+        discovery_disable = discovery_disable,
+        discovery_enable = discovery_enable,
     }
 }
 
